@@ -6,8 +6,13 @@ use crate::fl;
 use cosmic::app::{Command, Core};
 use cosmic::iced::alignment::{Horizontal, Vertical};
 use cosmic::iced::{Alignment, Length};
-use cosmic::widget::{self, icon, menu, nav_bar};
-use cosmic::{cosmic_theme, theme, Application, ApplicationExt, Apply, Element};
+use cosmic::widget::{self, button, container, menu, mouse_area, text, Grid, Row, Text};
+use cosmic::{cosmic_theme, theme, Application, ApplicationExt, Apply, Element, Renderer, Theme};
+use game::{pair_to_index, Board, Game, Tile};
+use widget_colors::{blacktheme, red1theme};
+
+mod game;
+mod widget_colors;
 
 const REPOSITORY: &str = "https://github.com/edfloreshz/cosmic-app-template";
 
@@ -20,8 +25,7 @@ pub struct YourApp {
     context_page: ContextPage,
     /// Key bindings for the application's menu bar.
     key_binds: HashMap<menu::KeyBind, MenuAction>,
-    /// A model that contains all of the pages assigned to the nav bar panel.
-    nav: nav_bar::Model,
+    game: Game,
 }
 
 /// This is the enum that contains all the possible variants that your application will need to transmit messages.
@@ -31,13 +35,9 @@ pub struct YourApp {
 pub enum Message {
     LaunchUrl(String),
     ToggleContextPage(ContextPage),
-}
-
-/// Identifies a page in the application.
-pub enum Page {
-    Page1,
-    Page2,
-    Page3,
+    GotoMenu,
+    Reset,
+    Reveal(usize),
 }
 
 /// Identifies a context page to display in the context drawer.
@@ -95,11 +95,6 @@ impl Application for YourApp {
         &mut self.core
     }
 
-    /// Instructs the cosmic runtime to use this model as the nav bar model.
-    fn nav_model(&self) -> Option<&nav_bar::Model> {
-        Some(&self.nav)
-    }
-
     /// This is the entry point of your application, it is where you initialize your application.
     ///
     /// Any work that needs to be done before the application starts should be done here.
@@ -108,29 +103,13 @@ impl Application for YourApp {
     /// - `flags` is used to pass in any data that your application needs to use before it starts.
     /// - `Command` type is used to send messages to your application. `Command::none()` can be used to send no messages to your application.
     fn init(core: Core, _flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        let mut nav = nav_bar::Model::default();
-
-        nav.insert()
-            .text("Page 1")
-            .data::<Page>(Page::Page1)
-            .icon(icon::from_name("applications-science-symbolic"))
-            .activate();
-
-        nav.insert()
-            .text("Page 2")
-            .data::<Page>(Page::Page2)
-            .icon(icon::from_name("applications-system-symbolic"));
-
-        nav.insert()
-            .text("Page 3")
-            .data::<Page>(Page::Page3)
-            .icon(icon::from_name("applications-games-symbolic"));
-
         let mut app = YourApp {
             core,
             context_page: ContextPage::default(),
             key_binds: HashMap::new(),
-            nav,
+            game: Game {
+                board: Board::new(10, 10, 30),
+            },
         };
 
         let command = app.update_titles();
@@ -158,7 +137,7 @@ impl Application for YourApp {
     ///
     /// To get a better sense of which widgets are available, check out the `widget` module.
     fn view(&self) -> Element<Self::Message> {
-        widget::text::title1(fl!("welcome"))
+        playfield(&self.game)
             .apply(widget::container)
             .width(Length::Fill)
             .height(Length::Fill)
@@ -189,6 +168,9 @@ impl Application for YourApp {
                 // Set the title of the context drawer.
                 self.set_context_title(context_page.title());
             }
+            Message::GotoMenu => todo!(),
+            Message::Reset => todo!(),
+            Message::Reveal(id) => self.game.board.board_vec[id].hidden = false,
         }
         Command::none()
     }
@@ -202,14 +184,6 @@ impl Application for YourApp {
         Some(match self.context_page {
             ContextPage::About => self.about(),
         })
-    }
-
-    /// Called when a nav item is selected.
-    fn on_nav_select(&mut self, id: nav_bar::Id) -> Command<Self::Message> {
-        // Activate the page in the model.
-        self.nav.activate(id);
-
-        self.update_titles()
     }
 }
 
@@ -240,16 +214,82 @@ impl YourApp {
 
     /// Updates the header and window titles.
     pub fn update_titles(&mut self) -> Command<Message> {
-        let mut window_title = fl!("app-title");
-        let mut header_title = String::new();
-
-        if let Some(page) = self.nav.text(self.nav.active()) {
-            window_title.push_str(" — ");
-            window_title.push_str(page);
-            header_title.push_str(page);
-        }
+        let window_title = fl!("app-title");
+        let header_title = String::new();
 
         self.set_header_title(header_title);
         self.set_window_title(window_title)
     }
+}
+
+fn playfield(game: &Game) -> widget::Container<'_, Message, cosmic::Theme> {
+    let tilebutton = |id: usize| {
+        mouse_area(
+            match game.board.board_vec[id] {
+                Tile {
+                    hidden: true,
+                    empty: true,
+                } => container("").style(theme::Container::Secondary),
+                Tile {
+                    hidden: true,
+                    empty: false,
+                } => container("").style(theme::Container::Secondary),
+                Tile {
+                    hidden: false,
+                    empty: true,
+                } => container("").style(theme::Container::custom(red1theme)),
+                Tile {
+                    hidden: false,
+                    empty: false,
+                } => container("").style(theme::Container::custom(blacktheme)),
+            }
+            .center_x()
+            .center_y()
+            .height(50)
+            .width(50),
+        )
+        .on_press(Message::Reveal(id))
+    };
+    let playboard = (0..game.board.height).fold(Grid::new(), |acc, row| {
+        let new_row = (0..game.board.width).fold(Row::new(), |acc2, column| {
+            acc2.push(tilebutton(pair_to_index(row, column, game.board.width)))
+        });
+        acc.push(new_row.spacing(2).align_items(Alignment::Center))
+            .insert_row()
+    });
+    let menu_button = button("Menu")
+        .on_press(Message::GotoMenu)
+        .style(theme::Button::Suggested);
+    let reset_button = button("Reset")
+        .on_press(Message::Reset)
+        .style(theme::Button::Destructive);
+    container(
+        widget::column()
+            .push(
+                container(playboard.row_spacing(2).row_alignment(Alignment::Center))
+                    .style(theme::Container::Primary)
+                    .width((52 * game.board.width + 2) as f32)
+                    .height((52 * game.board.height + 2) as f32)
+                    .center_x()
+                    .center_y()
+                    .padding(0),
+            )
+            .push(
+                widget::row()
+                    .push(menu_button)
+                    .push(reset_button)
+                    .padding(20)
+                    .spacing(20),
+            )
+            .align_items(Alignment::Center),
+    )
+    .padding(20)
+    .align_x(Horizontal::Center)
+    .align_y(Vertical::Center)
+}
+
+fn centralize_tile_content(tile_content: Text<Theme, Renderer>) -> Text<Theme, Renderer> {
+    tile_content
+        .horizontal_alignment(Horizontal::Center)
+        .vertical_alignment(Vertical::Center)
 }
