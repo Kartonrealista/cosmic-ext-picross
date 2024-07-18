@@ -17,7 +17,7 @@ impl Game {
             menu: Menu {
                 width_input: String::from("10"),
                 height_input: String::from("10"),
-                filled_count_input: String::from("45"),
+                filled_count_input: String::from("65"),
                 start_pressed: false,
             },
             winstate: Winstate::InProgress,
