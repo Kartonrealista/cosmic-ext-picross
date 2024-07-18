@@ -6,10 +6,12 @@ use crate::fl;
 use cosmic::app::{Command, Core};
 use cosmic::iced::alignment::{Horizontal, Vertical};
 use cosmic::iced::{Alignment, Length};
-use cosmic::widget::{self, button, container, menu, mouse_area, text, Grid, Row, Text};
+use cosmic::widget::{
+    self, button, container, menu, mouse_area, text, text_input, Column, Grid, Row, Text,
+};
 use cosmic::{cosmic_theme, theme, Application, ApplicationExt, Apply, Element, Renderer, Theme};
-use game::{pair_to_index, Board, Game, Tile};
-use widget_colors::{blacktheme, red1theme};
+use game::{pair_to_index, Board, Game, Tile, Winstate};
+use widget_colors::{blacktheme, gray1theme, gray2theme, whitetheme};
 
 mod game;
 mod widget_colors;
@@ -18,7 +20,7 @@ const REPOSITORY: &str = "https://github.com/edfloreshz/cosmic-app-template";
 
 /// This is the struct that represents your application.
 /// It is used to define the data that will be used by your application.
-pub struct YourApp {
+pub struct Picross {
     /// Application state which is managed by the COSMIC runtime.
     core: Core,
     /// Display a context drawer with the designated page if defined.
@@ -38,6 +40,11 @@ pub enum Message {
     GotoMenu,
     Reset,
     Reveal(usize),
+    Mark(usize),
+    InputHeight(String),
+    InputWidth(String),
+    InputFilledCount(String),
+    StartPressed,
 }
 
 /// Identifies a context page to display in the context drawer.
@@ -78,7 +85,7 @@ impl menu::action::MenuAction for MenuAction {
 /// - `Flags` is the data that your application needs to use before it starts.
 /// - `Message` is the enum that contains all the possible variants that your application will need to transmit messages.
 /// - `APP_ID` is the unique identifier of your application.
-impl Application for YourApp {
+impl Application for Picross {
     type Executor = cosmic::executor::Default;
 
     type Flags = ();
@@ -103,13 +110,11 @@ impl Application for YourApp {
     /// - `flags` is used to pass in any data that your application needs to use before it starts.
     /// - `Command` type is used to send messages to your application. `Command::none()` can be used to send no messages to your application.
     fn init(core: Core, _flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        let mut app = YourApp {
+        let mut app = Picross {
             core,
             context_page: ContextPage::default(),
             key_binds: HashMap::new(),
-            game: Game {
-                board: Board::new(10, 10, 30),
-            },
+            game: Game::new(),
         };
 
         let command = app.update_titles();
@@ -137,13 +142,19 @@ impl Application for YourApp {
     ///
     /// To get a better sense of which widgets are available, check out the `widget` module.
     fn view(&self) -> Element<Self::Message> {
-        playfield(&self.game)
-            .apply(widget::container)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .align_x(Horizontal::Center)
-            .align_y(Vertical::Center)
-            .into()
+        if self.game.menu.start_pressed {
+            playfield(&self.game)
+        } else {
+            menu(&self.game)
+        }
+        .apply(widget::container)
+        .height(Length::Fill)
+        .width(Length::Fill)
+        .center_x()
+        .center_y()
+        .align_x(Horizontal::Center)
+        .align_y(Vertical::Center)
+        .into()
     }
 
     /// Application messages are handled here. The application state can be modified based on
@@ -168,9 +179,41 @@ impl Application for YourApp {
                 // Set the title of the context drawer.
                 self.set_context_title(context_page.title());
             }
-            Message::GotoMenu => todo!(),
-            Message::Reset => todo!(),
-            Message::Reveal(id) => self.game.board.board_vec[id].hidden = false,
+            Message::Reveal(id) => {
+                self.game.board.board_vec[id].hidden = false;
+                self.game.wincheck();
+            }
+            Message::Mark(id) => {
+                let marked = &mut self.game.board.board_vec[id].marked;
+                *marked = !*marked;
+                self.game.wincheck()
+            }
+            Message::GotoMenu => {
+                self.game = Game::new();
+            }
+            Message::InputWidth(input) => self.game.menu.width_input = input,
+            Message::InputHeight(input) => self.game.menu.height_input = input,
+            Message::InputFilledCount(input) => self.game.menu.filled_count_input = input,
+            Message::StartPressed => {
+                self.game.board.width = self.game.menu.width_input.parse().unwrap();
+                self.game.board.height = self.game.menu.height_input.parse().unwrap();
+                self.game.board.filled_count = self.game.menu.filled_count_input.parse().unwrap();
+                self.game.board = Board::new(
+                    self.game.board.width,
+                    self.game.board.height,
+                    self.game.board.filled_count,
+                );
+                self.game.menu.start_pressed = true;
+            }
+
+            Message::Reset => {
+                self.game.board = Board::new(
+                    self.game.board.width,
+                    self.game.board.height,
+                    self.game.board.filled_count,
+                );
+                self.game.winstate = Winstate::InProgress;
+            }
         }
         Command::none()
     }
@@ -187,7 +230,7 @@ impl Application for YourApp {
     }
 }
 
-impl YourApp {
+impl Picross {
     /// The about page for this app.
     pub fn about(&self) -> Element<Message> {
         let cosmic_theme::Spacing { space_xxs, .. } = theme::active().cosmic().spacing;
@@ -223,32 +266,62 @@ impl YourApp {
 }
 
 fn playfield(game: &Game) -> widget::Container<'_, Message, cosmic::Theme> {
-    let tilebutton = |id: usize| {
-        mouse_area(
-            match game.board.board_vec[id] {
-                Tile {
-                    hidden: true,
-                    empty: true,
-                } => container("").style(theme::Container::Secondary),
-                Tile {
-                    hidden: true,
-                    empty: false,
-                } => container("").style(theme::Container::Secondary),
-                Tile {
-                    hidden: false,
-                    empty: true,
-                } => container("").style(theme::Container::custom(red1theme)),
-                Tile {
-                    hidden: false,
-                    empty: false,
-                } => container("").style(theme::Container::custom(blacktheme)),
-            }
-            .center_x()
-            .center_y()
-            .height(50)
-            .width(50),
-        )
-        .on_press(Message::Reveal(id))
+    let disabled_tilebutton = |id: usize| match game.board.board_vec[id] {
+        Tile {
+            hidden: true,
+            marked: true,
+            ..
+        } => mouse_area(
+            container(centralize_tile_content(text(String::from("X")).size(25)))
+                .style(theme::Container::Secondary)
+                .center_x()
+                .center_y()
+                .height(50)
+                .width(50),
+        ),
+        Tile {
+            hidden: true,
+            marked: false,
+            ..
+        } => mouse_area(
+            container("")
+                .style(theme::Container::Secondary)
+                .center_x()
+                .center_y()
+                .height(50)
+                .width(50),
+        ),
+        Tile {
+            hidden: false,
+            empty: true,
+            ..
+        } => mouse_area(
+            container("")
+                .style(theme::Container::custom(gray1theme))
+                .center_x()
+                .center_y()
+                .height(50)
+                .width(50),
+        ),
+        Tile {
+            hidden: false,
+            empty: false,
+            ..
+        } => mouse_area(
+            container("")
+                .style(theme::Container::custom(blacktheme))
+                .center_x()
+                .center_y()
+                .height(50)
+                .width(50),
+        ),
+    };
+    let tilebutton = |id: usize| match game.winstate {
+        Winstate::Won => disabled_tilebutton(id),
+        Winstate::Lost => disabled_tilebutton(id),
+        Winstate::InProgress => disabled_tilebutton(id)
+            .on_press(Message::Reveal(id))
+            .on_right_press(Message::Mark(id)),
     };
     let playboard = (0..game.board.height).fold(Grid::new(), |acc, row| {
         let new_row = (0..game.board.width).fold(Row::new(), |acc2, column| {
@@ -263,28 +336,115 @@ fn playfield(game: &Game) -> widget::Container<'_, Message, cosmic::Theme> {
     let reset_button = button("Reset")
         .on_press(Message::Reset)
         .style(theme::Button::Destructive);
+    let winstate_text = match game.winstate {
+        Winstate::Won => "You won!",
+        Winstate::Lost => "You lost!",
+        Winstate::InProgress => "Game in progress...",
+    };
+    let vertical_count_column = |vec: &Vec<usize>| {
+        vec.iter()
+            .fold(Column::new(), |acc: Column<'_, Message>, count| {
+                acc.push(centralize_tile_content(text(format!("{}", count))))
+            })
+    };
+    let vertical_counts = (&game)
+        .board
+        .vertical_count
+        .iter()
+        .fold(Row::new(), |acc, column| {
+            acc.push(
+                container(vertical_count_column(column).align_items(Alignment::Center))
+                    .style(theme::Container::Primary)
+                    .width(50)
+                    .center_x()
+                    .center_y(),
+            )
+        });
+    let horizontal_count_row = |vec: &Vec<usize>| {
+        vec.iter().fold(Row::new(), |acc: Row<'_, Message>, count| {
+            acc.push(centralize_tile_content(text(format!("{}", count))))
+        })
+    };
+    let horizontal_counts =
+        (&game)
+            .board
+            .horizontal_count
+            .iter()
+            .fold(Column::new(), |acc, row| {
+                acc.push(
+                    container(
+                        horizontal_count_row(row)
+                            .align_items(Alignment::Center)
+                            .spacing(2).padding(2),
+                    )
+                    .style(theme::Container::Primary)
+                    .height(50)
+                    .center_x()
+                    .center_y(),
+                )
+            });
+
     container(
         widget::column()
             .push(
-                container(playboard.row_spacing(2).row_alignment(Alignment::Center))
-                    .style(theme::Container::Primary)
-                    .width((52 * game.board.width + 2) as f32)
-                    .height((52 * game.board.height + 2) as f32)
-                    .center_x()
-                    .center_y()
-                    .padding(0),
+                container(
+                    container(vertical_counts.spacing(2).align_items(Alignment::End))
+                        .style(theme::Container::Primary)
+                        .center_x()
+                        .center_y(),
+                )
+                .style(theme::Container::Primary)
+                .align_x(Horizontal::Right)
+                .width((52 * game.board.width + 2) as f32)
+                .center_x()
+                .center_y()
+                .padding(0),
             )
             .push(
-                widget::row()
-                    .push(menu_button)
-                    .push(reset_button)
-                    .padding(20)
-                    .spacing(20),
+                widget::column()
+                    .push(
+                        widget::row()
+                            .push(
+                                container(
+                                    container(
+                                        horizontal_counts.spacing(2).align_items(Alignment::End),
+                                    )
+                                    .style(theme::Container::Primary)
+                                    .center_x()
+                                    .center_y(),
+                                )
+                                .style(theme::Container::Primary)
+                                .height((52 * game.board.height + 2) as f32)
+                                .center_x()
+                                .center_y()
+                                .padding(0),
+                            )
+                            .push(
+                                container(
+                                    playboard.row_spacing(2).row_alignment(Alignment::Center),
+                                )
+                                .style(theme::Container::Primary)
+                                .width((52 * game.board.width + 2) as f32)
+                                .height((52 * game.board.height + 2) as f32)
+                                .center_x()
+                                .center_y()
+                                .padding(0),
+                            )
+                            .align_items(Alignment::Center),
+                    )
+                    .push(
+                        widget::row()
+                            .push(menu_button)
+                            .push(reset_button)
+                            .padding(20)
+                            .spacing(20),
+                    )
+                    .push(container(text(winstate_text))).align_items(Alignment::Center),
             )
-            .align_items(Alignment::Center),
+            .align_items(Alignment::End),
     )
     .padding(20)
-    .align_x(Horizontal::Center)
+    .align_x(Horizontal::Right)
     .align_y(Vertical::Center)
 }
 
@@ -292,4 +452,39 @@ fn centralize_tile_content(tile_content: Text<Theme, Renderer>) -> Text<Theme, R
     tile_content
         .horizontal_alignment(Horizontal::Center)
         .vertical_alignment(Vertical::Center)
+}
+fn menu(game: &Game) -> widget::Container<'_, Message, cosmic::Theme> {
+    let width_box = text_input("", &game.menu.width_input).on_input(Message::InputWidth);
+    let height_box = text_input("", &game.menu.height_input).on_input(Message::InputHeight);
+    let filled_count_box =
+        text_input("", &game.menu.filled_count_input).on_input(Message::InputFilledCount);
+    let start_game_button = button(centralize_tile_content(text("START")))
+        .on_press(Message::StartPressed)
+        .style(theme::Button::Suggested)
+        .width(130)
+        .height(55);
+    container(
+        widget::column()
+            .push(
+                widget::row()
+                    .push(text("Width: "))
+                    .push(width_box.width(40))
+                    .align_items(Alignment::Center),
+            )
+            .push(
+                widget::row()
+                    .push(text("Height: "))
+                    .push(height_box.width(40))
+                    .align_items(Alignment::Center),
+            )
+            .push(
+                widget::row()
+                    .push(text("Filled boxes: "))
+                    .push(filled_count_box.width(40))
+                    .align_items(Alignment::Center),
+            )
+            .push(start_game_button)
+            .align_items(Alignment::End)
+            .spacing(20),
+    )
 }
