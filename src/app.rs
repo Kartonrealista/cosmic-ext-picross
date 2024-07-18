@@ -236,8 +236,9 @@ impl Picross {
         let cosmic_theme::Spacing { space_xxs, .. } = theme::active().cosmic().spacing;
 
         let icon = widget::svg(widget::svg::Handle::from_memory(
-            &include_bytes!("../res/icons/hicolor/scalable/apps/git.Kartonrealista.cosmic-ext-picross.svg")
-                [..],
+            &include_bytes!(
+                "../res/icons/hicolor/scalable/apps/git.Kartonrealista.cosmic-ext-picross.svg"
+            )[..],
         ));
 
         let title = widget::text::title3(fl!("app-title"));
@@ -344,7 +345,12 @@ fn playfield(game: &Game) -> widget::Container<'_, Message, cosmic::Theme> {
     let vertical_count_column = |vec: &Vec<usize>| {
         vec.iter()
             .fold(Column::new(), |acc: Column<'_, Message>, count| {
-                acc.push(centralize_tile_content(text(format!("{}", count))))
+                acc.push(
+                    container(centralize_tile_content(text(format!("{}", count))))
+                        .height(20)
+                        .center_x()
+                        .center_y(),
+                )
             })
     };
     let vertical_counts = (&game)
@@ -362,7 +368,12 @@ fn playfield(game: &Game) -> widget::Container<'_, Message, cosmic::Theme> {
         });
     let horizontal_count_row = |vec: &Vec<usize>| {
         vec.iter().fold(Row::new(), |acc: Row<'_, Message>, count| {
-            acc.push(centralize_tile_content(text(format!("{}", count))))
+            acc.push(
+                container(centralize_tile_content(text(format!("{}", count))))
+                    .width(20)
+                    .center_x()
+                    .center_y(),
+            )
         })
     };
     let horizontal_counts =
@@ -372,16 +383,11 @@ fn playfield(game: &Game) -> widget::Container<'_, Message, cosmic::Theme> {
             .iter()
             .fold(Column::new(), |acc, row| {
                 acc.push(
-                    container(
-                        horizontal_count_row(row)
-                            .align_items(Alignment::Center)
-                            .spacing(2)
-                            .padding(2),
-                    )
-                    .style(theme::Container::Primary)
-                    .height(50)
-                    .center_x()
-                    .center_y(),
+                    container(horizontal_count_row(row).align_items(Alignment::Center))
+                        .style(theme::Container::Primary)
+                        .height(50)
+                        .center_x()
+                        .center_y(),
                 )
             });
 
@@ -391,8 +397,9 @@ fn playfield(game: &Game) -> widget::Container<'_, Message, cosmic::Theme> {
                 container(
                     container(vertical_counts.spacing(2).align_items(Alignment::End))
                         .style(theme::Container::Primary)
+                        .height((((game.board.height + 1) / 2) * 20) as u16)
                         .center_x()
-                        .center_y(),
+                        .align_y(Vertical::Bottom),
                 )
                 .style(theme::Container::Primary)
                 .align_x(Horizontal::Right)
@@ -410,8 +417,9 @@ fn playfield(game: &Game) -> widget::Container<'_, Message, cosmic::Theme> {
                                     container(
                                         horizontal_counts.spacing(2).align_items(Alignment::End),
                                     )
+                                    .width((((game.board.width + 1) / 2) * 20) as u16)
                                     .style(theme::Container::Primary)
-                                    .center_x()
+                                    .align_x(Horizontal::Right)
                                     .center_y(),
                                 )
                                 .style(theme::Container::Primary)

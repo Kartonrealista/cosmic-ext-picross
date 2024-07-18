@@ -3,9 +3,6 @@ use rand::thread_rng;
 pub const fn pair_to_index(row: usize, column: usize, width: usize) -> usize {
     row * width + column
 }
-pub const fn index_to_pair(id: usize, width: usize) -> (usize, usize) {
-    (id / width, id % width)
-}
 
 pub struct Game {
     pub board: Board,
