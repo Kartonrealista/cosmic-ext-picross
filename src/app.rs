@@ -16,7 +16,7 @@ use widget_colors::{blacktheme, gray1theme, gray2theme, whitetheme};
 mod game;
 mod widget_colors;
 
-const REPOSITORY: &str = "https://github.com/edfloreshz/cosmic-app-template";
+const REPOSITORY: &str = "https://github.com/Kartonrealista/cosmic-ext-picross";
 
 /// This is the struct that represents your application.
 /// It is used to define the data that will be used by your application.
@@ -92,7 +92,7 @@ impl Application for Picross {
 
     type Message = Message;
 
-    const APP_ID: &'static str = "com.example.CosmicAppTemplate";
+    const APP_ID: &'static str = "git.Kartonrealista.cosmic-ext-picross";
 
     fn core(&self) -> &Core {
         &self.core
@@ -236,7 +236,7 @@ impl Picross {
         let cosmic_theme::Spacing { space_xxs, .. } = theme::active().cosmic().spacing;
 
         let icon = widget::svg(widget::svg::Handle::from_memory(
-            &include_bytes!("../res/icons/hicolor/128x128/apps/com.example.CosmicAppTemplate.svg")
+            &include_bytes!("../res/icons/hicolor/scalable/apps/git.Kartonrealista.cosmic-ext-picross.svg")
                 [..],
         ));
 
@@ -375,7 +375,8 @@ fn playfield(game: &Game) -> widget::Container<'_, Message, cosmic::Theme> {
                     container(
                         horizontal_count_row(row)
                             .align_items(Alignment::Center)
-                            .spacing(2).padding(2),
+                            .spacing(2)
+                            .padding(2),
                     )
                     .style(theme::Container::Primary)
                     .height(50)
@@ -439,7 +440,8 @@ fn playfield(game: &Game) -> widget::Container<'_, Message, cosmic::Theme> {
                             .padding(20)
                             .spacing(20),
                     )
-                    .push(container(text(winstate_text))).align_items(Alignment::Center),
+                    .push(container(text(winstate_text)))
+                    .align_items(Alignment::Center),
             )
             .align_items(Alignment::End),
     )
