@@ -38,7 +38,7 @@ extended-description = """\
 Describe your app here. \
 """
 depends = "$auto"
-section = "utility"
+section = "game"
 priority = "optional"
 assets = [
     ["target/release/cosmic-app-template", "usr/bin/cosmic-app-template", "755"],

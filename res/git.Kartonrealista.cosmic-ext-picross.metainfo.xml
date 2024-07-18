@@ -8,13 +8,13 @@
   <update_contact>your@email.com</update_contact>
   <url type="homepage"></url>
   <url type="bugtracker"></url>
-  <name>COSMIC App Template</name>
-  <summary>A template for COSMIC applications</summary>
+  <name>cosmic-ext-picross</name>
+  <summary>A nonogram game for the COSMIC desktop</summary>
   <description>
-    <p>A template for COSMIC applications</p>
+    <p>A nonogram game for the COSMIC desktop</p>
   </description>
   <launchable type="desktop-id">git.Kartonrealista.cosmic-ext-picross.desktop</launchable>
-  <icon type="remote" height="256" width="256">https://raw.githubusercontent.com/edfloreshz/cosmic-app-template/master/res/icons/hicolor/256x256/apps/git.Kartonrealista.cosmic-ext-picross.svg</icon>
+  <icon type="remote" height="256" width="256">https://raw.githubusercontent.com/edfloreshz/cosmic-app-template/master/res/icons/hicolor/scalable/apps/git.Kartonrealista.cosmic-ext-picross.svg</icon>
   <screenshots>
   </screenshots>
   <provides>
@@ -22,7 +22,7 @@
       <mimetype>text/plain</mimetype>
     </mimetypes>
     <binaries>
-      <binary>cosmic-app-template</binary>
+      <binary>cosmic-ext-picross</binary>
     </binaries>
   </provides>
 </component>

@@ -1,5 +1,5 @@
-name := 'cosmic-app-template'
-export APPID := 'com.example.CosmicAppTemplate'
+name := 'cosmic-ext-picross'
+export APPID := 'git.Kartonrealista.cosmic-ext-picross'
 
 rootdir := ''
 prefix := '/usr'

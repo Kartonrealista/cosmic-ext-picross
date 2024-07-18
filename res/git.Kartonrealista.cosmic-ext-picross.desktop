@@ -1,10 +1,10 @@
 [Desktop Entry]
-Name=COSMIC App Template
-Exec=cosmic-app-template %F
+Name=cosmic-ext-picross
+Exec=cosmic-ext-picross %F
 Terminal=false
 Type=Application
 StartupNotify=true
 Icon=git.Kartonrealista.cosmic-ext-picross
-Categories=COSMIC;Utility;
+Categories=COSMIC;Game
 Keywords=Folder;Manager;
 MimeType=inode/directory;
